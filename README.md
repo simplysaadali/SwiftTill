@@ -14,14 +14,14 @@
 
 > A lightweight checkout flow for building an order, saving it, and printing a customer receipt.
 
-SwiftTill brings item entry, cart totals, order history, and receipt printing into one small point-of-sale app. The React client talks to an Express API, which validates each order and stores it in MongoDB.
+SwiftTill brings inventory, item entry, cart totals, order history, and receipt printing into one small point-of-sale app. The React client talks to an Express API, which stores inventory items and validates completed orders in MongoDB.
 
 | Checkout | Order records |
 | --- | --- |
 | Add items with a name, price, and quantity; review and remove cart lines | Save completed orders, browse recent receipts, and reopen a receipt for printing |
 
 <p align="center">
-	<strong>Build the cart. Confirm the total. Keep a receipt for every order.</strong>
+	<strong>Manage the catalog. Build the cart. Keep a receipt for every order.</strong>
 </p>
 
 <p align="center">
@@ -35,11 +35,12 @@ SwiftTill brings item entry, cart totals, order history, and receipt printing in
 
 | | Capability | What it does |
 | --- | --- | --- |
-| **01** | Item entry | Add a named item with a unit price and quantity |
-| **02** | Live totals | Preview line totals and the current order total |
-| **03** | Checkout | Submit a non-empty order to the API |
-| **04** | Persistent history | Store orders in MongoDB and show the 20 most recent |
-| **05** | Printable receipt | View a saved receipt and print it from the browser |
+| **01** | Inventory catalog | Store item names and unit prices for reuse in Billing |
+| **02** | Item entry | Use catalog suggestions or add a new item with price and quantity |
+| **03** | Live totals | Preview line totals and the current order total |
+| **04** | Checkout | Submit a non-empty order to the API |
+| **05** | Persistent history | Store orders in MongoDB and show the 20 most recent |
+| **06** | Printable receipt | View a saved receipt and print it from the browser |
 
 ## Request Flow
 
@@ -52,6 +53,8 @@ flowchart LR
 	E --> F[(MongoDB)]
 	F --> G[Receipt]
 	F --> H[Recent orders]
+	A --> I[Item catalog]
+	I --> F
 ```
 
 The client sends item names, prices, and quantities. The server validates those values and calculates line totals and the grand total before saving the order. The saved order is returned to the client as a receipt.
@@ -84,7 +87,7 @@ The Vite development server proxies `/api` requests to Express on port `5000`. M
 pos-system/
 ├── client/
 │   ├── src/
-│   │   ├── App.jsx          # Checkout, cart, and recent orders
+	│   │   ├── App.jsx          # Billing, inventory, cart, and recent orders
 │   │   ├── Receipt.jsx      # Receipt view and print action
 │   │   ├── index.css        # App and print styles
 │   │   └── main.jsx         # React entry point
@@ -92,8 +95,10 @@ pos-system/
 │   ├── package.json
 │   └── vite.config.js       # Dev server and API proxy
 ├── server/
-│   ├── models/Order.js      # Order and item schemas
-│   ├── routes/orders.js     # Order API endpoints
+	│   ├── models/Item.js       # Inventory item schema
+	│   ├── models/Order.js      # Order and item schemas
+	│   ├── routes/items.js      # Inventory API endpoints
+	│   ├── routes/orders.js     # Order API endpoints
 │   ├── .env.example         # Local server configuration template
 │   ├── package.json
 │   └── server.js            # Express and MongoDB entry point
@@ -132,13 +137,15 @@ Open [http://localhost:5173](http://localhost:5173). The Vite server forwards `/
 
 ## API Overview
 
-All endpoints use the `/api/orders` base path.
+Inventory endpoints use `/api/items`; order endpoints use `/api/orders`.
 
 | Method | Endpoint | Purpose |
 | --- | --- | --- |
 | `GET` | `/api/orders` | Return the 20 most recent orders |
 | `POST` | `/api/orders` | Validate and save an order; returns the saved receipt |
 | `GET` | `/api/orders/:id` | Find one order by its MongoDB ID |
+| `GET` | `/api/items` | Return catalog items sorted by name |
+| `POST` | `/api/items` | Add or update a catalog item by name |
 
 ### Create an order
 
@@ -155,7 +162,7 @@ Content-Type: application/json
 }
 ```
 
-The API derives item totals and `grandTotal` from the submitted prices and quantities. A successful response includes the saved items, `receiptNo`, `grandTotal`, and timestamps. Invalid or empty orders return a `400` response with a message.
+The API derives item totals and `grandTotal` from the submitted prices and quantities. A successful response includes the saved items, `receiptNo`, `grandTotal`, and timestamps. Invalid or empty orders return a `400` response with a message. Billing saves catalog items when they are added to the cart; matching names reuse the existing item entry.
 
 ## Validation
 
@@ -183,4 +190,4 @@ node --check server/server.js
 
 ## Scope
 
-SwiftTill currently supports manual item entry and order receipts. It does not include product catalog or inventory management, user accounts, taxes, discounts, or payment processing.
+SwiftTill supports a persistent item catalog and order receipts. Inventory tracks item names and unit prices, not on-hand quantities. It does not include user accounts, taxes, discounts, or payment processing.

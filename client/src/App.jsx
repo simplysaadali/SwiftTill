@@ -9,6 +9,8 @@ export default function App() {
   const [cart, setCart] = useState([]);
   const [receipt, setReceipt] = useState(null);
   const [orders, setOrders] = useState([]);
+  const [items, setItems] = useState([]);
+  const [page, setPage] = useState("billing");
   const [error, setError] = useState("");
 
   const price = parseFloat(form.price);
@@ -19,19 +21,41 @@ export default function App() {
   const loadOrders = () =>
     axios.get("/api/orders").then((r) => setOrders(r.data)).catch(() => {});
 
-  useEffect(() => { loadOrders(); }, []);
+  const loadItems = () =>
+    axios.get("/api/items").then((r) => setItems(r.data)).catch(() => {});
 
-  const change = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  useEffect(() => { loadOrders(); loadItems(); }, []);
 
-  const addItem = (e) => {
+  const change = (e) => {
+    const { name, value } = e.target;
+    if (name === "name") {
+      const match = items.find((item) => item.name.toLowerCase() === value.trim().toLowerCase());
+      setForm((current) => ({ ...current, name: value, price: match ? String(match.price) : "" }));
+      return;
+    }
+    setForm((current) => ({ ...current, [name]: value }));
+  };
+
+  const addItem = async (e) => {
     e.preventDefault();
     if (!form.name.trim() || !(price >= 0) || !(qty >= 1)) {
       setError("Enter an item name, a price, and a quantity of at least 1.");
       return;
     }
-    setError("");
-    setCart([...cart, { id: Date.now(), name: form.name.trim(), price, quantity: qty }]);
-    setForm({ name: "", price: "", quantity: "1" });
+    try {
+      const { data: savedItem } = await axios.post("/api/items", { name: form.name.trim(), price });
+      setItems((current) => [
+        ...current.filter((item) => item._id !== savedItem._id),
+        savedItem,
+      ].sort((a, b) => a.name.localeCompare(b.name)));
+      setError("");
+      setCart((current) => [...current, {
+        id: Date.now(), name: savedItem.name, price: savedItem.price, quantity: qty,
+      }]);
+      setForm({ name: "", price: "", quantity: "1" });
+    } catch (err) {
+      setError(err.response?.data?.message || "Could not save the inventory item.");
+    }
   };
 
   const removeItem = (id) => setCart(cart.filter((i) => i.id !== id));
@@ -49,18 +73,30 @@ export default function App() {
 
   return (
     <div className="app">
-      <header className="top">
-        <h1>SwiftTill</h1>
-        <span>Point of sale</span>
-      </header>
+      <aside className="sidebar">
+        <div className="brand"><h1>SwiftTill</h1><span>Point of sale</span></div>
+        <nav aria-label="Main navigation">
+          <button className={page === "billing" ? "nav-button active" : "nav-button"} onClick={() => setPage("billing")}>Billing</button>
+          <button className={page === "inventory" ? "nav-button active" : "nav-button"} onClick={() => setPage("inventory")}>Inventory <span>{items.length}</span></button>
+        </nav>
+      </aside>
 
-      <main className="grid">
+      <div className="workspace">
+        <header className="top">
+          <h2>{page === "billing" ? "Billing" : "Inventory"}</h2>
+          <span>{page === "billing" ? "Create a customer order" : `${items.length} items in catalog`}</span>
+        </header>
+
+        {page === "billing" ? <main className="grid">
         <section className="panel entry">
           <h2>Add an item</h2>
           <form onSubmit={addItem}>
             <label>
               Item name
-              <input name="name" value={form.name} onChange={change} placeholder="Espresso" />
+              <input name="name" value={form.name} onChange={change} placeholder="Espresso" list="inventory-items" autoComplete="off" />
+              <datalist id="inventory-items">
+                {items.map((item) => <option key={item._id} value={item.name} />)}
+              </datalist>
             </label>
             <div className="row">
               <label>
@@ -111,9 +147,22 @@ export default function App() {
             Place order and print receipt
           </button>
         </section>
-      </main>
+      </main> : (
+        <section className="panel inventory">
+          {items.length === 0 ? (
+            <p className="empty">No items in inventory yet. Add an item from Billing to start your catalog.</p>
+          ) : (
+            <table>
+              <thead><tr><th>Item</th><th>Unit price</th></tr></thead>
+              <tbody>{items.map((item) => (
+                <tr key={item._id}><td>{item.name}</td><td className="num">{money(item.price)}</td></tr>
+              ))}</tbody>
+            </table>
+          )}
+        </section>
+      )}
 
-      {orders.length > 0 && (
+      {page === "billing" && orders.length > 0 && (
         <section className="panel history">
           <h2>Recent orders</h2>
           <ul>
@@ -130,6 +179,7 @@ export default function App() {
       )}
 
       {receipt && <Receipt order={receipt} onClose={() => setReceipt(null)} />}
+      </div>
     </div>
   );
 }
