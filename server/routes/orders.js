@@ -43,4 +43,14 @@ router.get("/:id", async (req, res) => {
   res.json(order);
 });
 
+router.delete("/:id", async (req, res) => {
+  try {
+    const order = await Order.findByIdAndDelete(req.params.id);
+    if (!order) return res.status(404).json({ message: "Receipt not found." });
+    res.status(204).end();
+  } catch (_err) {
+    res.status(400).json({ message: "Invalid receipt." });
+  }
+});
+
 module.exports = router;

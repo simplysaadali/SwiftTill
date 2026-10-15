@@ -146,6 +146,8 @@ Inventory endpoints use `/api/items`; order endpoints use `/api/orders`.
 | `GET` | `/api/orders/:id` | Find one order by its MongoDB ID |
 | `GET` | `/api/items` | Return catalog items sorted by name |
 | `POST` | `/api/items` | Add or update a catalog item by name |
+| `DELETE` | `/api/items/:id` | Delete an inventory item |
+| `DELETE` | `/api/orders/:id` | Delete a saved receipt |
 
 ### Create an order
 

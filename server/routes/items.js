@@ -30,4 +30,14 @@ router.post("/", async (req, res) => {
   }
 });
 
+router.delete("/:id", async (req, res) => {
+  try {
+    const item = await Item.findByIdAndDelete(req.params.id);
+    if (!item) return res.status(404).json({ message: "Inventory item not found." });
+    res.status(204).end();
+  } catch (_err) {
+    res.status(400).json({ message: "Invalid inventory item." });
+  }
+});
+
 module.exports = router;
