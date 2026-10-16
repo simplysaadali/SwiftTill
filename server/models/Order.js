@@ -9,11 +9,14 @@ const itemSchema = new mongoose.Schema({
 
 const orderSchema = new mongoose.Schema(
   {
-    receiptNo: { type: String, unique: true },
+    owner: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    receiptNo: { type: String, required: true },
     items: { type: [itemSchema], validate: (v) => v.length > 0 },
     grandTotal: { type: Number, required: true },
   },
   { timestamps: true }
 );
+
+orderSchema.index({ owner: 1, receiptNo: 1 }, { unique: true });
 
 module.exports = mongoose.model("Order", orderSchema);

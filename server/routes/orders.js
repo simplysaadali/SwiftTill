@@ -20,10 +20,10 @@ router.post("/", async (req, res) => {
     });
 
     const grandTotal = round(cleaned.reduce((s, i) => s + i.total, 0));
-    const count = await Order.countDocuments();
+    const count = await Order.countDocuments({ owner: req.user._id });
     const receiptNo = `R-${String(count + 1).padStart(5, "0")}`;
 
-    const order = await Order.create({ receiptNo, items: cleaned, grandTotal });
+    const order = await Order.create({ owner: req.user._id, receiptNo, items: cleaned, grandTotal });
     res.status(201).json(order);
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -31,21 +31,21 @@ router.post("/", async (req, res) => {
 });
 
 // List recent orders
-router.get("/", async (_req, res) => {
-  const orders = await Order.find().sort({ createdAt: -1 }).limit(20);
+router.get("/", async (req, res) => {
+  const orders = await Order.find({ owner: req.user._id }).sort({ createdAt: -1 }).limit(20);
   res.json(orders);
 });
 
 // Single order (receipt)
 router.get("/:id", async (req, res) => {
-  const order = await Order.findById(req.params.id);
+  const order = await Order.findOne({ _id: req.params.id, owner: req.user._id });
   if (!order) return res.status(404).json({ message: "Order not found." });
   res.json(order);
 });
 
 router.delete("/:id", async (req, res) => {
   try {
-    const order = await Order.findByIdAndDelete(req.params.id);
+    const order = await Order.findOneAndDelete({ _id: req.params.id, owner: req.user._id });
     if (!order) return res.status(404).json({ message: "Receipt not found." });
     res.status(204).end();
   } catch (_err) {

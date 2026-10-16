@@ -121,7 +121,7 @@ cp .env.example .env
 npm run dev
 ```
 
-The server reads `PORT` and `MONGO_URI` from `server/.env`. The example file uses port `5000` and the local database `mongodb://127.0.0.1:27017/pos_system`.
+The server reads `PORT`, `MONGO_URI`, and `JWT_SECRET` from `server/.env`. Set `JWT_SECRET` to the output of `openssl rand -hex 32` before starting the server. New users create an account or sign in before accessing billing and inventory; each account has its own catalog and order history.
 
 ### 2. Start the client
 
@@ -137,7 +137,13 @@ Open [http://localhost:5173](http://localhost:5173). The Vite server forwards `/
 
 ## API Overview
 
-Inventory endpoints use `/api/items`; order endpoints use `/api/orders`.
+Register at `/api/auth/register` or sign in at `/api/auth/login`; both return a bearer token. Authenticated session details are available at `/api/auth/me`. Inventory endpoints use `/api/items` and order endpoints use `/api/orders`; all inventory and order routes require the token and only return data belonging to its account.
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/auth/register` | Create an account (email and password of at least 8 characters) |
+| `POST` | `/api/auth/login` | Sign in and return a bearer token |
+| `GET` | `/api/auth/me` | Validate the session and return the account |
 
 | Method | Endpoint | Purpose |
 | --- | --- | --- |

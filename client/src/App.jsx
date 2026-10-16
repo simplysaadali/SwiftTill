@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import api from "./api.js";
+import Auth from "./Auth.jsx";
 import Receipt from "./Receipt.jsx";
 
 const money = (n) => `$${Number(n).toFixed(2)}`;
 
 export default function App() {
+  const [authUser, setAuthUser] = useState(null);
+  const [authStatus, setAuthStatus] = useState("checking");
   const [form, setForm] = useState({ name: "", price: "", quantity: "1" });
   const [inventoryForm, setInventoryForm] = useState({ name: "", price: "" });
   const [cart, setCart] = useState([]);
@@ -23,12 +26,31 @@ export default function App() {
   const grandTotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
 
   const loadOrders = () =>
-    axios.get("/api/orders").then((r) => setOrders(r.data)).catch(() => {});
+    api.get("/api/orders").then((r) => setOrders(r.data)).catch(() => {});
 
   const loadItems = () =>
-    axios.get("/api/items").then((r) => setItems(r.data)).catch(() => {});
+    api.get("/api/items").then((r) => setItems(r.data)).catch(() => {});
 
-  useEffect(() => { loadOrders(); loadItems(); }, []);
+  useEffect(() => {
+    if (!localStorage.getItem("swifttill_token")) {
+      setAuthStatus("ready");
+      return;
+    }
+    api.get("/api/auth/me")
+      .then(({ data }) => setAuthUser(data.user))
+      .catch(() => localStorage.removeItem("swifttill_token"))
+      .finally(() => setAuthStatus("ready"));
+  }, []);
+
+  useEffect(() => {
+    if (!authUser) return;
+    setOrders([]);
+    setItems([]);
+    setCart([]);
+    setReceipt(null);
+    loadOrders();
+    loadItems();
+  }, [authUser]);
 
   const change = (e) => {
     const { name, value } = e.target;
@@ -41,7 +63,7 @@ export default function App() {
   };
 
   const saveInventoryItem = async (name, itemPrice) => {
-    const { data: savedItem } = await axios.post("/api/items", { name, price: itemPrice });
+    const { data: savedItem } = await api.post("/api/items", { name, price: itemPrice });
     setItems((current) => [
       ...current.filter((item) => item._id !== savedItem._id),
       savedItem,
@@ -86,7 +108,7 @@ export default function App() {
   const deleteInventoryItem = async (item) => {
     if (!window.confirm(`Delete ${item.name} from inventory?`)) return;
     try {
-      await axios.delete(`/api/items/${item._id}`);
+      await api.delete(`/api/items/${item._id}`);
       setItems((current) => current.filter((entry) => entry._id !== item._id));
       setInventoryDeleteError("");
     } catch (err) {
@@ -97,7 +119,7 @@ export default function App() {
   const deleteOrder = async (order) => {
     if (!window.confirm(`Delete receipt ${order.receiptNo}? This cannot be undone.`)) return;
     try {
-      await axios.delete(`/api/orders/${order._id}`);
+      await api.delete(`/api/orders/${order._id}`);
       setOrders((current) => current.filter((entry) => entry._id !== order._id));
       setReceipt((current) => current?._id === order._id ? null : current);
       setHistoryError("");
@@ -110,13 +132,22 @@ export default function App() {
 
   const checkout = async () => {
     try {
-      const { data } = await axios.post("/api/orders", { items: cart });
+      const { data } = await api.post("/api/orders", { items: cart });
       setReceipt(data);
       setCart([]);
       loadOrders();
     } catch (err) {
       setError(err.response?.data?.message || "Could not place the order.");
     }
+  };
+
+  if (authStatus === "checking") return <div className="auth-loading" aria-label="Checking your session" />;
+  if (!authUser) return <Auth onAuthenticated={(user) => { setAuthUser(user); setAuthStatus("ready"); }} />;
+
+  const signOut = () => {
+    localStorage.removeItem("swifttill_token");
+    setAuthUser(null);
+    setPage("billing");
   };
 
   return (
@@ -133,6 +164,7 @@ export default function App() {
         <header className="top">
           <h2>{page === "billing" ? "Billing" : "Inventory"}</h2>
           <span>{page === "billing" ? "Create a customer order" : `${items.length} items in catalog`}</span>
+          <div className="account-menu"><span>{authUser.email}</span><button className="action-button" onClick={signOut}>Sign out</button></div>
         </header>
 
         {page === "billing" ? <main className="grid">
