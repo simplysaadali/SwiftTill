@@ -141,7 +141,7 @@ Register at `/api/auth/register` or sign in at `/api/auth/login`; both return a 
 
 | Method | Endpoint | Purpose |
 | --- | --- | --- |
-| `POST` | `/api/auth/register` | Create an account (email and password of at least 8 characters) |
+| `POST` | `/api/auth/register` | Create an account (name, email, and password of at least 8 characters) |
 | `POST` | `/api/auth/login` | Sign in and return a bearer token |
 | `GET` | `/api/auth/me` | Validate the session and return the account |
 

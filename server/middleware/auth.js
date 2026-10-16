@@ -56,7 +56,7 @@ const requireAuth = async (req, res, next) => {
       : "";
     const userId = token ? verifyToken(token) : null;
     if (!userId) return res.status(401).json({ message: "Please sign in to continue." });
-    const user = await User.findById(userId).select("email");
+    const user = await User.findById(userId).select("name email");
     if (!user) return res.status(401).json({ message: "Please sign in to continue." });
     req.user = user;
     next();

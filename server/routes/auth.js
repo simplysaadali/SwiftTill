@@ -7,21 +7,25 @@ const router = express.Router();
 const respondWithSession = (res, user, status = 200) => {
   res.status(status).json({
     token: createToken(user._id.toString()),
-    user: { id: user._id, email: user.email },
+    user: { id: user._id, name: user.name || "", email: user.email },
   });
 };
 
 router.post("/register", async (req, res) => {
   try {
+    const name = typeof req.body.name === "string" ? req.body.name.trim() : "";
     const email = typeof req.body.email === "string" ? req.body.email.trim().toLowerCase() : "";
     const password = typeof req.body.password === "string" ? req.body.password : "";
+    if (!name || name.length > 80) {
+      return res.status(400).json({ message: "Enter a name up to 80 characters." });
+    }
     if (!/^\S+@\S+\.\S+$/.test(email)) {
       return res.status(400).json({ message: "Enter a valid email address." });
     }
     if (password.length < 8) {
       return res.status(400).json({ message: "Password must be at least 8 characters." });
     }
-    const user = await User.create({ email, passwordHash: await hashPassword(password) });
+    const user = await User.create({ name, email, passwordHash: await hashPassword(password) });
     respondWithSession(res, user, 201);
   } catch (err) {
     if (err.code === 11000) return res.status(409).json({ message: "An account with this email already exists." });
@@ -44,7 +48,7 @@ router.post("/login", async (req, res) => {
 });
 
 router.get("/me", requireAuth, (req, res) => {
-  res.json({ user: { id: req.user._id, email: req.user.email } });
+  res.json({ user: { id: req.user._id, name: req.user.name || "", email: req.user.email } });
 });
 
 module.exports = router;

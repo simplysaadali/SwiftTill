@@ -3,6 +3,7 @@ import api from "./api.js";
 
 export default function Auth({ onAuthenticated }) {
   const [mode, setMode] = useState("login");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -20,7 +21,7 @@ export default function Auth({ onAuthenticated }) {
     setBusy(true);
     setError("");
     try {
-      const { data } = await api.post(`/api/auth/${mode}`, { email, password });
+      const { data } = await api.post(`/api/auth/${mode}`, { name, email, password });
       localStorage.setItem("swifttill_token", data.token);
       onAuthenticated(data.user);
     } catch (err) {
@@ -46,6 +47,21 @@ export default function Auth({ onAuthenticated }) {
           <p>{registering ? "Set up an account to get started." : "Enter your details to continue."}</p>
         </div>
         <form className="auth-form" onSubmit={submit}>
+          {registering && (
+            <>
+              <label htmlFor="auth-name">Your name</label>
+              <input
+                id="auth-name"
+                type="text"
+                autoComplete="name"
+                maxLength={80}
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder="Alex Morgan"
+                required
+              />
+            </>
+          )}
           <label htmlFor="auth-email">Email address</label>
           <input
             id="auth-email"

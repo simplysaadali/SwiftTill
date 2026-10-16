@@ -164,7 +164,7 @@ export default function App() {
         <header className="top">
           <h2>{page === "billing" ? "Billing" : "Inventory"}</h2>
           <span>{page === "billing" ? "Create a customer order" : `${items.length} items in catalog`}</span>
-          <div className="account-menu"><span>{authUser.email}</span><button className="action-button" onClick={signOut}>Sign out</button></div>
+          <div className="account-menu"><span>{authUser.name || "Account"}</span><button className="action-button" onClick={signOut}>Sign out</button></div>
         </header>
 
         {page === "billing" ? <main className="grid">
